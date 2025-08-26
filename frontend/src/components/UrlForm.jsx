@@ -1,45 +1,64 @@
 import React, { useState } from "react";
-import { createShortUrl } from "../api/urlApi";
 
-const UrlForm = ({ onAdd }) => {
+function UrlForm({ onAdd }) {
   const [longUrl, setLongUrl] = useState("");
   const [shortUrl, setShortUrl] = useState("");
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+    setMessage("");
+    setShortUrl("");
+
     try {
-      const data = await createShortUrl(longUrl);
-      setShortUrl(data.shortUrl);
-      onAdd(); // refresh list
-      setLongUrl("");
+      const res = await fetch("http://localhost:5000/api/url/shorten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ longUrl }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        setMessage(data.error);
+      } else {
+        setShortUrl(data.shortUrl);
+        setLongUrl("");
+        onAdd(); // Refresh list
+        setMessage("Short URL generated successfully!");
+      }
     } catch (err) {
-      setError("Failed to create short URL");
+      setMessage("Server error, try again!");
     }
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(shortUrl);
+    setMessage("Copied to clipboard!");
+  };
+
   return (
-    <div className="form-container">
-      <h2>Create Short URL</h2>
+    <div className="form-card">
       <form onSubmit={handleSubmit}>
         <input
-          type="text"
+          type="url"
           placeholder="Enter long URL"
           value={longUrl}
           onChange={(e) => setLongUrl(e.target.value)}
           required
         />
-        <button type="submit">Shorten</button>
+        <button type="submit">Generate</button>
       </form>
+
       {shortUrl && (
-        <p>
-          Short URL: <a href={shortUrl} target="_blank">{shortUrl}</a>
-        </p>
+        <div className="short-url-box">
+          <a href={shortUrl} target="_blank">{shortUrl}</a>
+          <button onClick={copyToClipboard}>Copy</button>
+        </div>
       )}
-      {error && <p className="error">{error}</p>}
+
+      {message && <p className="message">{message}</p>}
     </div>
   );
-};
+}
 
 export default UrlForm;
